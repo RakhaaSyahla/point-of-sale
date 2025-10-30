@@ -77,7 +77,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastVariant, setToastVariant] = useState("success"); // 'success' | 'danger'
 
-  // save to localStorage whenever categories change
+  // save ke local storage setiap ada perubahan categories
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(categories));
