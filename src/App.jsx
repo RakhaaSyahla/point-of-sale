@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   Container,
   Row,
@@ -17,9 +17,30 @@ const STORAGE_KEY = "pos_categories_v1";
 const getNextId = () => {
   const key = "pos_next_id_v1";
   const raw = localStorage.getItem(key);
-  const next = raw ? Number(raw) : 1;
-  localStorage.setItem(key, String(next + 1));
-  return next;
+
+  // jika counter valid di localStorage, pakai itu
+  if (raw && !Number.isNaN(Number(raw))) {
+    const next = Number(raw);
+    localStorage.setItem(key, String(next + 1));
+    return next;
+  }
+
+  try {
+    const rawCats = localStorage.getItem(STORAGE_KEY);
+    const cats = rawCats ? JSON.parse(rawCats) : initialProducts;
+    const maxId =
+      cats && cats.length
+        ? cats.reduce((m, c) => Math.max(m, Number(c.id) || 0), 0)
+        : 0;
+    const next = maxId + 1;
+    // simpan counter berikutnya (next + 1) agar panggilan selanjutnya aman
+    localStorage.setItem(key, String(next + 1));
+    return next;
+  } catch (err) {
+    // fallback aman kalau parsing error
+    localStorage.setItem(key, "2"); // next time will be 2
+    return 1;
+  }
 };
 
 export default function App() {
@@ -57,6 +78,7 @@ export default function App() {
       return initialProducts;
     }
   });
+  const releaseDateRef = useRef(null);
 
   // form state
   const [name, setName] = useState("");
@@ -358,7 +380,8 @@ export default function App() {
                       isInvalid={!!errors.releaseDate}
                       max={new Date().toISOString().split("T")[0]}
                       required
-                      id="releaseDateInput"
+                      // hilangkan id yang menyebabkan warning, pakai ref
+                      ref={releaseDateRef}
                       style={{ paddingRight: "40px" }} // kasih ruang buat ikon
                     />
                     {/* Ikon kalender di kanan */}
@@ -373,11 +396,9 @@ export default function App() {
                         cursor: "pointer",
                       }}
                       onClick={() => {
-                        // Saat ikon diklik, fokus ke input tanggal
-                        document
-                          .getElementById("releaseDateInput")
-                          .showPicker?.() ||
-                          document.getElementById("releaseDateInput").focus();
+                        // fokus / showPicker via ref, lebih React-friendly
+                        releaseDateRef.current?.showPicker?.() ||
+                          releaseDateRef.current?.focus?.();
                       }}
                     />
                     <Form.Control.Feedback type="invalid">
@@ -469,8 +490,12 @@ export default function App() {
                     categories.map((cat, idx) => (
                       <tr key={cat.id}>
                         <td className="text-center">{idx + 1}</td>
-                        <td><strong>{cat.name}</strong></td>
-                        <td className="text-muted" style={{ fontSize: 14 }}>{cat.description || '-'}</td>
+                        <td>
+                          <strong>{cat.name}</strong>
+                        </td>
+                        <td className="text-muted" style={{ fontSize: 14 }}>
+                          {cat.description || "-"}
+                        </td>
                         <td>Rp {Number(cat.price).toLocaleString()}</td>
                         <td>{cat.category}</td>
                         <td>{cat.releaseDate ? cat.releaseDate : "-"}</td>
